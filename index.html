@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>AR Balloon Pop</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-animation-component@5.1.0/dist/aframe-animation-component.min.js"></script>
     <style>
       body {
@@ -56,10 +56,6 @@
         80% { opacity: 1; }
         100% { opacity: 0; }
       }
-
-      .a-enter-ar {
-        bottom: 20px !important;
-      }
     </style>
   </head>
   <body>
@@ -68,8 +64,12 @@
       <div id="message-container"></div>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-      <a-entity camera look-controls position="0 1.6 0"></a-entity>
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;">
+
+      <a-camera gps-camera rotation-reader></a-camera>
       <a-entity id="treasures-container"></a-entity>
 
       <a-assets>
@@ -90,7 +90,6 @@
             const userLat = position.coords.latitude;
             const userLng = position.coords.longitude;
             generateTreasures(userLat, userLng);
-            startLocationTracking();
             showMessage("Pop the balloons to score points!");
           },
           (error) => {
@@ -104,8 +103,8 @@
       function generateTreasures(centerLat, centerLng) {
         gameState.treasures = [];
         for (let i = 0; i < 5; i++) {
-          const latOffset = (Math.random() - 0.5) * 0.0002;
-          const lngOffset = (Math.random() - 0.5) * 0.0002;
+          const latOffset = (Math.random() - 0.5) * 0.0003;
+          const lngOffset = (Math.random() - 0.5) * 0.0003;
           const treasure = {
             id: `treasure-${i}`,
             lat: centerLat + latOffset,
@@ -115,39 +114,24 @@
           };
           gameState.treasures.push(treasure);
         }
+
+        addBalloonsToScene();
       }
 
-      function startLocationTracking() {
-        navigator.geolocation.watchPosition(
-          updateARContent,
-          (error) => console.error("Position tracking error:", error),
-          { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
-        );
-      }
-
-      function updateARContent(position) {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
+      function addBalloonsToScene() {
         const container = document.getElementById('treasures-container');
-        container.innerHTML = '';
 
         gameState.treasures.forEach((treasure, index) => {
-          if (treasure.collected) return;
-          let x = Math.sin(index) * 3;
-          let z = -Math.cos(index) * 3;
-          let y = 5 + Math.random() * 3;
-
           setTimeout(() => {
             const entity = document.createElement('a-entity');
             entity.setAttribute('id', treasure.id);
-            entity.setAttribute('position', `${x} ${y} ${z}`);
+            entity.setAttribute('gps-entity-place', `latitude: ${treasure.lat}; longitude: ${treasure.lng}`);
             entity.setAttribute('class', 'clickable');
-            entity.setAttribute('cursor-listener', '');
 
             entity.innerHTML = `
               <a-sphere radius="0.5" color="#FF69B4"></a-sphere>
               <a-cylinder height="0.5" radius="0.03" color="#333" position="0 -0.5 0"></a-cylinder>
-              <a-animation attribute="position" to="${x} 0.5 ${z}" dur="6000" easing="ease-out"></a-animation>
+              <a-animation attribute="position" to="0 0.5 0" dur="4000" easing="ease-out"></a-animation>
             `;
 
             entity.addEventListener('click', () => collectTreasure(treasure));
@@ -190,12 +174,6 @@
       }
 
       window.addEventListener('load', initGame);
-
-      AFRAME.registerComponent('cursor-listener', {
-        init: function () {
-          this.el.addEventListener('click', function () {});
-        }
-      });
     </script>
   </body>
 </html>
